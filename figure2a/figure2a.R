@@ -64,7 +64,6 @@ tgLC  <- textGrob(text.dat$label[2],
 
 
 fig <- res %>%
-  # filter(group != "Lung cancer") %>%
   ggplot(aes(x=bin, y=value, group=id)) +
   geom_line(color="grey", linewidth=0.1, alpha=0.8) +
   coord_cartesian(ylim = c(-0.25, 0.25)) +
