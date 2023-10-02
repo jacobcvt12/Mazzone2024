@@ -144,7 +144,7 @@ arm.imp <- merge(arm.imp, arm.coef[,c('arm.num', 'abs.value', 'sign.value')], by
 
 bl$pc.id <- 1
 right.annot <- ggplot() +
-  geom_point(data = bl, aes(, x = x, y = bin.id), color = 'white') +
+  geom_point(data = bl, aes(x = x, y = bin.id), color = 'white') +
   facet_grid(arm ~ pc.id, scales = 'free', switch = 'y') +
   theme_minimal() +
   geom_point(data = arm.imp, aes(x = abs.value, y = bin.id, color = sign.value)) +
