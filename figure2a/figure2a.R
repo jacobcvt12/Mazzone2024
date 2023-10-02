@@ -95,6 +95,6 @@ gt_fig$widths[which_facets & which_small] <- gt_fig$widths[which_facets & which_
 
 fig <- ggdraw(gt_fig) + draw_grob(tgNC) + draw_grob(tgLC)
 
-pdf("~/Delfi/ForJacob/mathios_fig_a_ct.pdf", height=3.25, width=7.08661)
+pdf("figure2a.pdf", height=3.25, width=7.08661)
 fig 
 dev.off()
