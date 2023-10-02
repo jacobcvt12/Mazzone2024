@@ -16,12 +16,12 @@ dat.meta <-
                                   `Pack Years` >= 31 & `Pack Years` <= 60 ~ "31 - 60",
                                   `Pack Years` >= 61 & `Pack Years` <= 90 ~ "61 - 90",
                                   `Pack Years` >= 91 & `Pack Years` <= 120 ~ "91 - 120",
-                                  `Pack Years` >= 120 ~ "120 or more"),
+                                  `Pack Years` >= 121 ~ "121 or more"),
          Histology = case_when(Histology == "Adenocarcinoma" ~ "Adenocarcinoma",
                                Histology == "Squamous cell carcinoma" ~ "Squamous cell carcinoma",
                                Histology == "Not Confirmed Lung Cancer" ~ "Non-cancer",
                                TRUE ~ "Other")) %>%
-  mutate(`Pack Years` = factor(`Pack Years`, levels = rev(c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "120 or more"))))
+  mutate(`Pack Years` = factor(`Pack Years`, levels = rev(c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "121 or more"))))
 
 scores <- 
   read_csv("final_scores.csv") %>% 
@@ -57,7 +57,7 @@ col.fun.row = list(Age = colorRamp2(c(50, 90), c('#f7fcf0', '#4eb3d3')) ,
                    Sex = structure(c('#807dba', '#dadaeb'), names = c('Male', 'Female')),
                    Histology = structure(c('#faebd7', '#ee82ee', '#483d8b', '#add8e6'), names=c('Non-cancer', 'Adenocarcinoma', 'Squamous cell carcinoma', 'Other')),
                    `Smoking Status` = structure(c('#ffffff', '#737373'), names = c("Former", "Current")),
-                   `Pack Years` = structure(colorRampPalette(c("#f6eff7", "#3690c0"))(5), names = c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "120 or more")),
+                   `Pack Years` = structure(colorRampPalette(c("#f6eff7", "#3690c0"))(5), names = c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "121 or more")),
                    Status = structure(c('#f7f7f7', '#238b45'), names = c("Non-cancer", "Lung Cancer")),
                    Stage = structure(c('#eeeeee', '#fee5d9', '#fcae91', '#fb6a4a', '#cb181d'), names = c('Non-cancer', 'I', 'II','III','IV')),
                    `Delfi Score` = colorRamp2(c(0, 1), c('#ffffff', '#111111')))
