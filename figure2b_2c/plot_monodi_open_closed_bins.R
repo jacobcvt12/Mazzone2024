@@ -15,15 +15,45 @@ FindOvls <- function(obj1,obj2){
   return(as.data.frame(freq.matched))
 }
 
-#read in fragmentation profiles
-scaled.dat <- readRDS("rep_sample_frag_profiles.rds")
+.meanSmoother <- function(x, k=1, iter=2, na.rm=TRUE){
+  meanSmoother.internal <- function(x, k=1, na.rm=TRUE){
+    n <- length(x)
+    y <- rep(NA,n)
+    
+    window.mean <- function(x, j, k, na.rm=na.rm){
+      if (k>=1){
+        return(mean(x[(j-(k+1)):(j+k)], na.rm=na.rm))
+      } else {
+        return(x[j])
+      }
+    }
+    
+    for (i in (k+1):(n-k)){
+      y[i] <- window.mean(x,i,k, na.rm)
+    }
+    for (i in 1:k){
+      y[i] <- window.mean(x,i,i-1, na.rm)
+    }
+    for (i in (n-k+1):n){
+      y[i] <- window.mean(x,i,n-i,na.rm)
+    }
+    y
+  }
+  
+  for (i in 1:iter){
+    x <- meanSmoother.internal(x, k=k, na.rm=na.rm)
+  }
+  x
+}
 
+#read in fragmentation profiles
+scaled.dat <- read_csv("figure2b_2c/Lucas_monodi_ratios_100kb_bins.csv")
 
 #gather supporting reference files
-ref.bins <- read.delim("kb100_genomic_coord_ref.txt")
+ref.bins <- read.delim("figure2b_2c/kb100_genomic_coord_ref.txt")
 
 #LUSC Reference AB compartments
-lusc.data <- read.delim("lusc_tumor_compartments_100kb.txt") %>% 
+lusc.data <- read.delim("figure2b_2c/lusc_tumor_compartments_100kb.txt") %>% 
  select(chr = chr, start, end,lusc=eigen)%>%
  merge(ref.bins, by=c("chr", "start", "end")) %>%
  select(c(bin_num, arm, lusc))%>% 
@@ -39,10 +69,11 @@ mutate(data=map(data,
                 ~ mutate(.x,
                          lusc=.meanSmoother(lusc)))) %>%
  unnest("data")%>%
+  ungroup()%>%
  select(-c(arm))
 
 #lymphoblastoid Reference AB compartments
-lymph.data <- read.delim("hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
+lymph.data <- read.delim("figure2b_2c/hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
   select(chr = chr, start, end, lymph=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
   select(c(bin_num, arm, lymph)) %>%
@@ -58,15 +89,52 @@ lymph <- lymph.data  %>%
                   ~ mutate(.x,
                           lymph=.meanSmoother(lymph)))) %>%
   unnest("data") %>%
+  ungroup()%>%
   select(-c(arm))
 
 
 
+data <- read.delim("~/Downloads/lusc_tumor_compartments_100kb.txt") %>% 
+  select(chr = chr, start, end,lusc=eigen)%>%
+  merge(ref.bins, by=c("chr", "start", "end")) %>%
+  select(c(bin_num, arm, lusc))
+
+lusc.dat <- data %>%
+  arrange(bin_num) %>%
+  group_by(arm) %>%
+  nest() %>%
+  mutate(data=map(data,
+                  ~ mutate(.x,
+                           lusc=.meanSmoother(lusc)))) %>%
+  unnest("data")%>%
+  ungroup() %>%
+  select(-c(arm))
+
+data <- read.delim("~/Downloads/hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
+  select(chr = chr, start, end, lymph=eigen)%>%
+  merge(ref.bins, by=c("chr", "start", "end")) %>%
+  select(c(bin_num, arm, lymph))
+
+lymph.dat <- data  %>%
+  arrange(bin_num) %>%
+  group_by(arm) %>%
+  nest() %>%
+  mutate(data=map(data,
+                  ~ mutate(.x,
+                           lymph=.meanSmoother(lymph)))) %>%
+  unnest("data") %>%
+  ungroup() %>%
+  select(-c(arm))
+
 #set reference and test non-cancers
-ref.noncancers <-read.delim("noncancer_ids.txt") %>% 
-  head(10)
-test.noncancers <- read.delim("noncancer_ids.txt") %>%
-  filter(!id %in% c(ref.noncancers$id))
+ref.noncancers <-read_csv("figure2b_2c/Noncancer_reference_ids.txt")
+
+test.noncancers <- read_csv("figure2b_2c/Noncancer_test_ids.txt") %>%
+  select(-c(ichor))
+
+sclc.samps <- read_csv("figure2b_2c/Cancer_ids.txt")
+
+samps <- rbind(sclc.samps, test.noncancers)
 
 #generate reference value of each metric across 10 healthy cases
 reference_healthies <- scaled.dat%>%
@@ -76,20 +144,21 @@ reference_healthies <- scaled.dat%>%
 
 #generate reference open & closed regions
 #open in lusc, closed in lymgh
+
 refs_lymph_closed <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
   filter(lymph >= .7 & lusc <=.3) %>%
   mutate(color="lymph_closed_lusc_open")
 
-#open in lymph, closed in lusc
+
 refs_lymph_open <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
   filter(lymph <= .3 & lusc >=.7) %>%
   mutate(color="lymph_open_lusc_closed")
 
-#closed in both
+
 refs_all_closed <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
@@ -97,7 +166,7 @@ refs_all_closed <- merge(lymph, lusc, by="bin_num") %>%
   filter(lymph > .65) %>%
   mutate(color="all_closed")
 
-#open in both
+
 refs_all_open <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
@@ -105,12 +174,12 @@ refs_all_open <- merge(lymph, lusc, by="bin_num") %>%
   filter(lymph < .65) %>%
   mutate(color="all_open")
 
-#combine all reference bins together
+
 refs <- rbind(refs_lymph_closed, refs_lymph_open) %>%
   rbind(refs_all_closed) %>%
   rbind(refs_all_open) 
 
-#summarize fragmentation values per sample in each of all closed, all open, and differentially open /closed regions
+
 dat <- scaled.dat %>%
   filter(!id %in% c(ref.noncancers$id)) %>%
   merge(refs, by="bin_num") %>%
@@ -120,11 +189,9 @@ dat <- scaled.dat %>%
   summarise(med=mean(scaled.smooth, na.rm=T)) %>%
   mutate(type = case_when(
     id %in% sclc.samps$id ~ "Cancers", 
-    id %in% noncan.samps$id ~ "Non-cancer")
+    id %in% test.noncancers$id ~ "Non-cancer")
   )%>%
-  merge(samps, by="id") %>%
-  mutate(region=ifelse(color %in% c("all_closed", "lymph_closed_lusc_open"), "closed", "open"))%>%
-  filter(id != "DL_PA_002094")
+  mutate(region=ifelse(color %in% c("all_closed", "lymph_closed_lusc_open"), "closed", "open"))
 
 
 #generate summarized metric across cancers, noncancers in 100kb bins
@@ -161,6 +228,7 @@ highlight <- merged.smooth.type %>%
 p1 <- merged.smooth.type %>%
   filter(chr == "chr22") %>%
   group_by(metric) %>%
+  mutate(value=as.numeric(value)) %>%
   mutate(value=scale(value, center=F, scale=T)) %>%
   mutate(transp=ifelse(bin_num %in% highlight$bin_num, .95, .1)) %>%
   mutate(metric=as.character(metric),
@@ -190,7 +258,7 @@ ggplot(aes(x=as.factor(bin_num), y=value, fill=color, alpha=transp))+geom_bar(st
 #deviation from non-cancer reference in important bins
 p2 <- dat %>%
   filter(metric=="monodi") %>%
-  mutate(type.x=as.character(type.x)) %>%
+  mutate(type.x=as.character(type)) %>%
   mutate(type.x=str_replace(type.x, "Cancers", "Squamous Cell\nLung Cancer" )) %>%
   mutate(region=str_replace(region, "closed", "Closed in \nLymphoblastoid\nReference"), region=str_replace(region, "open", "Open in\nLymphoblastoid\nReference")) %>%
   mutate(color=str_replace(color, "all_open", "Shared Chromatin State"), color=str_replace(color, "all_closed", "Shared Chromatin State"), color=str_replace(color, "lymph_closed_lusc_open", "Different Chromatin State"), color=str_replace(color, "lymph_open_lusc_closed", "Different Chromatin State")) %>%
@@ -212,4 +280,4 @@ p2 <- dat %>%
 
 library(cowplot)
 plot_final <- plot_grid(p1, p2, rel_heights = c(3,1), ncol=1, align = "v",  axis = 'l', label_size = 12, label_x = .05, hjust=.01)
-ggsave("figure2bc", plot_final, units="mm", width=180, height = 170)
+ggsave("figure2b_2c/figure2bc.pdf", plot_final, units="mm", width=180, height = 170)

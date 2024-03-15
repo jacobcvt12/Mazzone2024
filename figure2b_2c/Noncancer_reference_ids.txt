@@ -1,0 +1,11 @@
+id,ichor,type
+PGDX26721P,0,Noncancer
+PGDX26856P,0,Noncancer
+PGDX26822P,0,Noncancer
+PGDX26924P,0,Noncancer
+PGDX26690P,0,Noncancer
+PGDX26944P,0,Noncancer
+PGDX26716P,0,Noncancer
+PGDX26744P,0,Noncancer
+PGDX26700P,0,Noncancer
+PGDX26911P,0,Noncancer
