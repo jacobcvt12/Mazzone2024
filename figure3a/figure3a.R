@@ -13,6 +13,9 @@ dat.meta <-
   filter(id %in% dat.scores$id) %>%
   rename(status = type, stage = Stage)
 
+dat.sex <- 
+  read_csv("./data/LUCAS_sex.csv")
+
 dat.labels <- 
   dat.meta %>% 
   select(id, status, stage) 
@@ -33,7 +36,8 @@ dat.full <-
                                   `Pack Years` >= 121 ~ "121 or more")) %>% 
   mutate(`Pack Years` = factor(`Pack Years`, levels = rev(c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "121 or more")))) %>% 
   mutate(`Smoking Status` = str_to_title(`Smoking Status`)) %>% 
-  mutate(`Smoking Status` = factor(`Smoking Status`, levels = c("Never", "Former", "Current")))
+  mutate(`Smoking Status` = factor(`Smoking Status`, levels = c("Never", "Former", "Current"))) %>% 
+  inner_join(dat.sex)
 
 dat.features.all <- 
   dat.full %>% 
@@ -51,7 +55,7 @@ dat.features.noncancer <-
 
 dat.clinical <- 
   dat.full %>% 
-  select(id, Age, `Smoking Status`, `Pack Years`)
+  select(id, Age, Sex, `Smoking Status`, `Pack Years`)
 
 recipe.noncancer <- 
   recipe(status ~ ., data = dat.features.noncancer) %>%
@@ -82,9 +86,10 @@ baked.heatmap <-
   as.matrix()
 
 annot.rows <- 
-  baked.full[, c('Delfi Score', 'Status', 'Stage', 'Age', 'Smoking Status', 'Pack Years')]
+  baked.full[, c('Delfi Score', 'Status', 'Stage', 'Age', 'Sex', 'Smoking Status', 'Pack Years')]
 
 col.fun.row = list(Age = colorRamp2(c(23, 94), c('#f7fcf0', '#4eb3d3')) ,
+                   Sex = structure(c('#807dba', '#dadaeb'), names = c('Male', 'Female')),
                    `Smoking Status` = structure(c('#ffffff', '#737373', 'grey20'), names = c("Never", "Former", "Current")),
                    `Pack Years` = structure(colorRampPalette(c("#f6eff7", "#3690c0"))(5), names = c("30 or fewer", "31 - 60", "61 - 90", "91 - 120", "121 or more")),
                    Status = structure(c('#f7f7f7', '#238b45'), names = c("Non-cancer", "Lung Cancer")),
@@ -144,5 +149,6 @@ ht.out <-
                                                                   fontface = "bold"))) %v% 
   ht.raw
 
-draw(ht.out, merge_legends = TRUE, padding = unit(c(1, 1, 27, 1), "mm"))
 pdf("figure3a.pdf", height=6.69291, width=7.08661)
+draw(ht.out, merge_legends = TRUE, padding = unit(c(1, 1, 27, 1), "mm"))
+dev.off()
