@@ -72,7 +72,6 @@ mutate(data=map(data,
   ungroup()%>%
  select(-c(arm))
 
-#lymphoblastoid Reference AB compartments
 lymph.data <- read.delim("figure2b_2c/hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
   select(chr = chr, start, end, lymph=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
@@ -93,12 +92,13 @@ lymph <- lymph.data  %>%
   select(-c(arm))
 
 
+#lymphoblastoid Reference AB compartments
 
 data <- read.delim("~/Downloads/lusc_tumor_compartments_100kb.txt") %>% 
   select(chr = chr, start, end,lusc=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
   select(c(bin_num, arm, lusc))
-
+#smooth bin eigenvalues
 lusc.dat <- data %>%
   arrange(bin_num) %>%
   group_by(arm) %>%
