@@ -215,7 +215,7 @@ merged.smooth.type <- scaled.dat%>%
   filter(arm != "#N/A") %>%
   gather(metric, value, c(Cancer_monodi:lusc)) %>%
   mutate(color=ifelse(value > 0, "gray50", "red4")) %>%
-  na.omit()
+  na.omit() 
 
 highlight <- merged.smooth.type %>%
   select(c(bin_num, metric, color)) %>%
