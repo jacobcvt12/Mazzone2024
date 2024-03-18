@@ -3,45 +3,39 @@ library(tidyverse)
 library(cowplot)
 library(grid)
 library(forcats)
+library(RCurl)
 
-status <- s3read_using(FUN=read_csv,
-                       bucket="dlcst-detection-training-crispi",
-                       object="features/ldt_v1_training_ids.csv") %>%
-  filter(set %in% c("TRAINING", "CV125"))
+# Load preds to get training data status
+load(url("https://raw.githubusercontent.com/cancer-genomics/reproduce_lucas_wflow/master/code/rlucas/data/prediction_lucas.rda"))
+status <- select(preds, id, status=type)  
 
-feats <- s3read_using(FUN=read_csv,
-                      bucket="dlcst-detection-training-crispi",
-                      object="features/ldt_v1_features_long.csv.gz") %>%
-  filter(feature=="centeredslratio") %>%
-  inner_join(status) 
+# Calculate ratios for 473 bins
+feats <-
+  read.csv(text = getURL("https://raw.githubusercontent.com/cancer-genomics/reproduce_lucas_wflow/master/data/lucas_5mbs_delfi473.csv")) %>% 
+  filter(!str_detect(arm, "X")) %>%
+  mutate(ratio.cor = short.cor/long.cor) %>%
+  group_by(id) %>%
+  mutate(ratio.centered = scale(ratio.cor, scale=FALSE)[,1]) %>%
+  ungroup()
 
-nodules <- s3read_using(FUN=read_csv,
-                        bucket="delfi-unblinded",
-                        object="ldt_analysis/training/clinical_data/training_v1/adsl_delfi-l101_ldt_train_analysis_30MAY2023.csv")
-
-arms <- s3read_using(FUN=read_tsv,
-                     bucket="delfi-central-data",
-                     object="bins_100Kb_to_5Mb.tsv.gz") %>%
-  distinct(armlevel, bin)
+arms <- distinct(feats, bin, arm) %>%
+  rename(armlevel=arm)
 
 arm <- arms %>% group_by(armlevel) %>%
   summarize(n=n(), .groups="drop") %>%
   mutate(arm = as.character(armlevel))
 
+# Create data frame to plot
 res <- feats %>%
   inner_join(status) %>%
-  filter(set=="TRAINING") %>%
-  inner_join(nodules) %>%
-  # filter(TESTFL) %>%
-  mutate(group=case_when(status == "Cancer" ~ "Lung cancer",
+  mutate(group=case_when(status == "cancer" ~ "Lung cancer",
                          TRUE ~ "Non-cancer"),
-         bin=as.numeric(spread_var),
          group=factor(group, levels=c("Non-cancer",
                                       "Lung cancer"))) %>%
   inner_join(arms) %>%
   mutate(armlevel=fct_reorder(armlevel, bin)) 
 
-
+# Create data frame for text grobs
 text.dat <- res %>%
   group_by(group) %>%
   summarise(N=length(unique(id))) %>%
@@ -63,8 +57,9 @@ tgLC  <- textGrob(text.dat$label[2],
                   gp=gpar(cex=0.5, hjust=0))
 
 
+# Make the figure
 fig <- res %>%
-  ggplot(aes(x=bin, y=value, group=id)) +
+  ggplot(aes(x=bin, y=ratio.centered, group=id)) +
   geom_line(color="grey", linewidth=0.1, alpha=0.8) +
   coord_cartesian(ylim = c(-0.25, 0.25)) +
   facet_grid(group~armlevel, 
@@ -94,6 +89,7 @@ gt_fig$widths[which_facets & which_small] <- gt_fig$widths[which_facets & which_
 
 fig <- ggdraw(gt_fig) + draw_grob(tgNC) + draw_grob(tgLC)
 
+# Save figure as PDF
 pdf("figure2a.pdf", height=3.25, width=7.08661)
 fig 
 dev.off()
