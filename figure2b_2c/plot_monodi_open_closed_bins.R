@@ -52,53 +52,28 @@ scaled.dat <- read_csv("figure2b_2c/Lucas_monodi_ratios_100kb_bins.csv")
 #gather supporting reference files
 ref.bins <- read.delim("figure2b_2c/kb100_genomic_coord_ref.txt")
 
-#LUSC Reference AB compartments
-lusc.data <- read.delim("figure2b_2c/lusc_tumor_compartments_100kb.txt") %>% 
+#LUSC Reference AB compartments (unsmoothed)
+lusc <- read.delim("figure2b_2c/lusc_tumor_compartments_100kb.txt") %>% 
  select(chr = chr, start, end,lusc=eigen)%>%
  merge(ref.bins, by=c("chr", "start", "end")) %>%
  select(c(bin_num, arm, lusc))%>% 
  mutate(lusc=scale(lusc, center=T, scale=T)) %>%
  mutate(lusc=rescale(lusc))
 
-#smooth bin eigenvalues
-lusc <- lusc.data %>%
- arrange(bin_num) %>%
-group_by(arm) %>%
-nest() %>%
-mutate(data=map(data,
-                ~ mutate(.x,
-                         lusc=.meanSmoother(lusc)))) %>%
- unnest("data")%>%
-  ungroup()%>%
- select(-c(arm))
-
-lymph.data <- read.delim("figure2b_2c/hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
+#Lymphocyte Reference AB compartments (unsmoothed)
+lymph <- read.delim("figure2b_2c/hic_compartments_100kb_ebv_2014.txt", sep =" ") %>% 
   select(chr = chr, start, end, lymph=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
   select(c(bin_num, arm, lymph)) %>%
   mutate(lymph=scale(lymph, center=T, scale=T)) %>%
   mutate(lymph=rescale(lymph))
 
-#smooth bin eigenvalues
-lymph <- lymph.data  %>%
-  arrange(bin_num) %>%
-  group_by(arm) %>%
-  nest() %>%
-  mutate(data=map(data,
-                  ~ mutate(.x,
-                          lymph=.meanSmoother(lymph)))) %>%
-  unnest("data") %>%
-  ungroup()%>%
-  select(-c(arm))
-
-
-#lymphoblastoid Reference AB compartments
-
+#smooth bin eigenvalues for plotting LUSC
 data <- read.delim("~/Downloads/lusc_tumor_compartments_100kb.txt") %>% 
   select(chr = chr, start, end,lusc=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
   select(c(bin_num, arm, lusc))
-#smooth bin eigenvalues
+
 lusc.dat <- data %>%
   arrange(bin_num) %>%
   group_by(arm) %>%
@@ -110,6 +85,7 @@ lusc.dat <- data %>%
   ungroup() %>%
   select(-c(arm))
 
+#smooth bin eigenvalues for plotting Lymphocyte
 data <- read.delim("~/Downloads/hic_compartments_100kb_ebv_2014.txt", sep = " ") %>% 
   select(chr = chr, start, end, lymph=eigen)%>%
   merge(ref.bins, by=c("chr", "start", "end")) %>%
@@ -132,8 +108,10 @@ ref.noncancers <-read_csv("figure2b_2c/Noncancer_reference_ids.txt")
 test.noncancers <- read_csv("figure2b_2c/Noncancer_test_ids.txt") %>%
   select(-c(ichor))
 
+# set cancer samples
 sclc.samps <- read_csv("figure2b_2c/Cancer_ids.txt")
 
+# merge cancer and test noncancers
 samps <- rbind(sclc.samps, test.noncancers)
 
 #generate reference value of each metric across 10 healthy cases
@@ -142,8 +120,10 @@ reference_healthies <- scaled.dat%>%
   group_by(metric, bin_num) %>%
   summarise(ref_healthies=mean(scaled.smooth))
 
-#generate reference open & closed regions
-#open in lusc, closed in lymgh
+#####generate reference open & closed regions ###################
+
+
+#open in lusc, closed in lymph
 
 refs_lymph_closed <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
@@ -151,14 +131,14 @@ refs_lymph_closed <- merge(lymph, lusc, by="bin_num") %>%
   filter(lymph >= .7 & lusc <=.3) %>%
   mutate(color="lymph_closed_lusc_open")
 
-
+#closed in lusc, open in lymph
 refs_lymph_open <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
   filter(lymph <= .3 & lusc >=.7) %>%
   mutate(color="lymph_open_lusc_closed")
 
-
+# closed in both
 refs_all_closed <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
@@ -166,7 +146,7 @@ refs_all_closed <- merge(lymph, lusc, by="bin_num") %>%
   filter(lymph > .65) %>%
   mutate(color="all_closed")
 
-
+# open in both
 refs_all_open <- merge(lymph, lusc, by="bin_num") %>%
   mutate(dif=lusc-lymph) %>%
   arrange(dif) %>%
@@ -174,12 +154,12 @@ refs_all_open <- merge(lymph, lusc, by="bin_num") %>%
   filter(lymph < .65) %>%
   mutate(color="all_open")
 
-
+# merge into single reference dataframe
 refs <- rbind(refs_lymph_closed, refs_lymph_open) %>%
   rbind(refs_all_closed) %>%
   rbind(refs_all_open) 
 
-
+# merge labeled bins with mono/di ratio for all samples, label cancer status
 dat <- scaled.dat %>%
   filter(!id %in% c(ref.noncancers$id)) %>%
   merge(refs, by="bin_num") %>%
@@ -217,6 +197,7 @@ merged.smooth.type <- scaled.dat%>%
   mutate(color=ifelse(value > 0, "gray50", "red4")) %>%
   na.omit() 
 
+# select bins to highlight in plot
 highlight <- merged.smooth.type %>%
   select(c(bin_num, metric, color)) %>%
   spread(metric, color) %>%
