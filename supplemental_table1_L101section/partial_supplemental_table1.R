@@ -6,7 +6,8 @@ library(stringr)
 library(tibble)
 library(tidyr)
 
-# Data is simulated for the purpose of code demonstration. It doesn't represent the real data.
+# All fields included in this dataset are simulated for the purpose of code demonstration 
+# and do not represent real results or actual data collected participants.
 data = readRDS("./data/cds_simulated_data.rds")
 
 data <- data %>%
