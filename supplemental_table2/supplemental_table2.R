@@ -5,7 +5,7 @@ library(stringr)
 library(tibble)
 
 # All fields included in this dataset are simulated for the purpose of code demonstration 
-# and do not represent real results or actual data collected participants.
+# and do not represent real results or actual data collected from participants.
 data = readRDS("./data/cds_simulated_data.rds")
 
 generate_cross_tab <- function(df, cat_var1, cat_var2) {
